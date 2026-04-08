@@ -1,0 +1,86 @@
+# render.yaml — Render Blueprint
+# This single file defines your entire infrastructure.
+# Connect your GitHub repo to Render and it will provision everything automatically.
+
+services:
+
+  # ── 1. FastAPI Web Service ─────────────────────────────────────────────────
+  - type: web
+    name: cabin-api
+    runtime: python
+    region: frankfurt          # closest to Nigeria — change to oregon if you prefer US
+    plan: free                 # upgrade to starter ($7/mo) when you go live
+    buildCommand: pip install -r requirements.txt && chmod +x start.sh
+    startCommand: ./start.sh
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cabin-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: cabin-redis
+          type: redis
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false            # you'll paste this manually in Render dashboard
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: MONO_SECRET_KEY
+        sync: false
+      - key: APP_ENV
+        value: production
+      - key: AI_CONFIDENCE_THRESHOLD
+        value: "0.75"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+  # ── 2. Celery Worker ──────────────────────────────────────────────────────
+  - type: worker
+    name: cabin-celery-worker
+    runtime: python
+    region: frankfurt
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A celery_worker worker --beat --loglevel=info
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cabin-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: cabin-redis
+          type: redis
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+  # ── 3. Redis (for Celery broker + backend) ────────────────────────────────
+  - type: redis
+    name: cabin-redis
+    region: frankfurt
+    plan: free                 # 25MB — enough for job queue
+    ipAllowList: []            # only accessible internally by your services
+
+databases:
+
+  # ── 4. PostgreSQL ─────────────────────────────────────────────────────────
+  - name: cabin-db
+    region: frankfurt
+    plan: free                 # 1GB storage, 97 connection limit
+    databaseName: cabin_db
+    user: cabin_user
