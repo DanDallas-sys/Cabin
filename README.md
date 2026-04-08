@@ -10,10 +10,10 @@ A production-ready backend that automatically tracks, categorises, and reports f
 |---|---|
 | API | FastAPI |
 | Database | PostgreSQL + SQLAlchemy 2.0 |
-| AI Classifier | Anthropic Claude (Haiku) |
+| AI Classifier | OpenAI (GPT-4o mini) |
 | WhatsApp | Twilio |
 | Background Jobs | Celery + Redis |
-| Bank Data | Mono / Okra / Stitch |
+| Bank Data | Mono |
 | Reports | Pandas + OpenPyXL |
 
 ---
@@ -35,7 +35,7 @@ cp .env.example .env
 
 Required values:
 - `DATABASE_URL` — your PostgreSQL connection string
-- `ANTHROPIC_API_KEY` — from console.anthropic.com
+- `OPENAI_API_KEY` — from platform.openai.com
 - `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` — from twilio.com/console
 - `TWILIO_WHATSAPP_FROM` — your approved WhatsApp sender number
 - `MONO_SECRET_KEY` — from your Mono dashboard
@@ -126,6 +126,8 @@ Incoming Transaction
 ---
 
 ## Adding Bank Providers
+
+Currently using Mono only.
 
 See `services/bank_provider.py`. To add a new provider:
 
