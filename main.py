@@ -126,11 +126,20 @@ async def whatsapp_reply(
     if not tx:
         return {"status": "transaction_not_found"}
 
-    # Classify user's description with AI
-    category, confidence = classify_with_ai(message)
+    # Try dictionary first, then AI
+    from services.dictionary import match_pattern
+    from services.processor import clean_narration
+
+    cleaned_message = clean_narration(message)
+    category = match_pattern(cleaned_message)
+
+    if category:
+        confidence = 1.0
+    else:
+        category, confidence = classify_with_ai(cleaned_message)
 
     tx.category = category
-    tx.cleaned_narration = message
+    tx.cleaned_narration = cleaned_message
     tx.confidence = confidence
     tx.status = TransactionStatus.processed
 
