@@ -208,3 +208,22 @@ def list_transactions(user_id: int, db: Session = Depends(get_db)):
         for tx in txs
     ]
 
+
+# ── Debug: see all transactions raw ──────────────────────────────────────────
+
+@app.get("/debug/transactions", summary="All transactions raw")
+def debug_transactions(db: Session = Depends(get_db)):
+    txs = db.query(Transaction).order_by(Transaction.id.desc()).all()
+    return [
+        {
+            "id": tx.id,
+            "user_id": tx.user_id,
+            "amount": tx.amount,
+            "category": tx.category,
+            "status": tx.status,
+            "reference": tx.reference,
+            "narration": tx.narration,
+            "date": tx.date,
+        }
+        for tx in txs
+    ]
