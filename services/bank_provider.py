@@ -30,10 +30,23 @@ def parse_mono_transaction(event_data: dict, user_phone: str) -> "TransactionIn 
     """
     try:
         tx = event_data.get("transaction", event_data)
+        # Mono v2 API uses 'id', v1 uses '_id' — handle both
+        reference = tx.get("id") or tx.get("_id")
+        if not reference:
+            raise KeyError("_id")
+        # Amount: Mono v2 returns whole naira, v1 returns kobo
+        raw_amount = float(tx["amount"])
+        amount = raw_amount / 100 if raw_amount > 100000 else raw_amount
+        # Type: debit is negative, credit is positive
+        tx_type = tx.get("type", "debit").lower()
+        if tx_type == "debit":
+            amount = -abs(amount)
+        else:
+            amount = abs(amount)
         return TransactionIn(
-            amount=float(tx["amount"]) / 100,
-            narration=tx.get("narration") or tx.get("description"),
-            reference=tx["_id"],
+            amount=amount,
+            narration=tx.get("narration") or tx.get("description") or tx.get("notes"),
+            reference=reference,
             date=datetime.fromisoformat(tx["date"].replace("Z", "+00:00")),
             user_phone=user_phone,
         )

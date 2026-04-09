@@ -30,8 +30,11 @@ def fetch_mono_transactions(account_id: str) -> list[dict]:
             )
             response.raise_for_status()
             data = response.json()
-            print(f"[Mono] Fetched {len(data.get('data', []))} transactions for account {account_id}")
-            return data.get("data", [])
+            txs = data.get("data", [])
+            print(f"[Mono] Fetched {len(txs)} transactions for account {account_id}")
+            if txs:
+                print(f"[Mono] Sample transaction structure: {txs[0]}")
+            return txs
 
     except httpx.HTTPError as e:
         print(f"[Mono] Failed to fetch transactions for {account_id}: {e}")
