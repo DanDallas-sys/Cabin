@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# start.sh — runs on every deploy before the API starts
-# Render will call this instead of uvicorn directly if you point startCommand to it
-
-set -e  # exit immediately if any command fails
+set -e
 
 echo ">>> Running database migrations..."
 python -c "
-from database import engine, Base
-import models  # ensures all models are registered
-Base.metadata.create_all(bind=engine)
-print('Tables created/verified.')
+import sys
+try:
+    from database import engine, Base
+    import models
+    Base.metadata.create_all(bind=engine)
+    print('Tables created/verified.')
+except Exception as e:
+    print(f'Migration failed: {e}', file=sys.stderr)
+    sys.exit(1)
 "
 
 echo ">>> Starting API..."
