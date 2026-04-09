@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     app_env: str = "development"
     ai_confidence_threshold: float = 0.75
 
+    # Auth
+    api_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

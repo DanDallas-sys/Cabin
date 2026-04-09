@@ -15,6 +15,7 @@ from services.report import generate_report
 from services.bank_provider import parse_mono_transaction, verify_mono_signature
 from models import User, ClarificationRequest, Transaction, ClarificationStatus, TransactionStatus
 from config import get_settings
+from auth import require_api_key
 
 settings = get_settings()
 
@@ -47,7 +48,7 @@ def health():
 # ── Internal transaction webhook (direct / testing) ───────────────────────────
 
 @app.post("/webhook/transaction", summary="Receive a transaction directly")
-def receive_transaction(tx: TransactionIn, db: Session = Depends(get_db)):
+def receive_transaction(tx: TransactionIn, db: Session = Depends(get_db), _: str = Depends(require_api_key)):
     try:
         result = process_transaction(db, tx)
         return {"status": "processed", "transaction_id": result.id, "tx_status": result.status}
@@ -102,13 +103,21 @@ async def mono_webhook(
     raw_transactions = fetch_mono_transactions(account_id)
 
     processed = []
+    failed = 0
     for raw_tx in raw_transactions:
         tx_data = parse_mono_transaction(raw_tx, user_phone)
         if tx_data:
-            result = process_transaction(db, tx_data)
-            processed.append({"id": result.id, "status": result.status})
+            try:
+                result = process_transaction(db, tx_data)
+                processed.append({"id": result.id, "status": result.status})
+            except Exception as e:
+                print(f"[Mono] Error processing transaction: {e}")
+                failed += 1
+        else:
+            failed += 1
 
-    return {"status": "ok", "processed": processed}
+    print(f"[Mono] Done — processed: {len(processed)}, failed: {failed}")
+    return {"status": "ok", "processed_count": len(processed), "failed_count": failed}
 
 
 # ── WhatsApp reply webhook (Twilio) ───────────────────────────────────────────
@@ -183,7 +192,7 @@ async def whatsapp_reply(
 # ── Report download ───────────────────────────────────────────────────────────
 
 @app.get("/report/{user_id}", summary="Download a user's transaction report as Excel")
-def download_report(user_id: int, db: Session = Depends(get_db)):
+def download_report(user_id: int, db: Session = Depends(get_db), _: str = Depends(require_api_key)):
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -203,7 +212,7 @@ def download_report(user_id: int, db: Session = Depends(get_db)):
 # ── Admin: list users ─────────────────────────────────────────────────────────
 
 @app.get("/users", summary="List all users (admin)")
-def list_users(db: Session = Depends(get_db)):
+def list_users(db: Session = Depends(get_db), _: str = Depends(require_api_key)):
     users = db.query(User).all()
     return [{"id": u.id, "phone": u.phone, "created_at": u.created_at} for u in users]
 
@@ -211,7 +220,7 @@ def list_users(db: Session = Depends(get_db)):
 # ── Admin: list transactions for a user ──────────────────────────────────────
 
 @app.get("/users/{user_id}/transactions", summary="List transactions for a user")
-def list_transactions(user_id: int, db: Session = Depends(get_db)):
+def list_transactions(user_id: int, db: Session = Depends(get_db), _: str = Depends(require_api_key)):
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
