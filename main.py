@@ -3,6 +3,7 @@ import hmac
 import hashlib
 from fastapi import FastAPI, Depends, HTTPException, Request, Form, Header
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -24,6 +25,15 @@ app = FastAPI(
     title="CABIN — Automated Financial Tracking API",
     version="1.0.0",
     description="Automatically tracks, categorises, and reports financial transactions.",
+)
+
+# Allow all origins for now (lock this down when you add auth)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -212,22 +222,3 @@ def list_transactions(user_id: int, db: Session = Depends(get_db)):
         for tx in txs
     ]
 
-
-# ── Debug: see all transactions raw ──────────────────────────────────────────
-
-@app.get("/debug/transactions", summary="All transactions raw")
-def debug_transactions(db: Session = Depends(get_db)):
-    txs = db.query(Transaction).order_by(Transaction.id.desc()).all()
-    return [
-        {
-            "id": tx.id,
-            "user_id": tx.user_id,
-            "amount": tx.amount,
-            "category": tx.category,
-            "status": tx.status,
-            "reference": tx.reference,
-            "narration": tx.narration,
-            "date": tx.date,
-        }
-        for tx in txs
-    ]
