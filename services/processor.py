@@ -96,21 +96,31 @@ def process_transaction(db: Session, tx_data: TransactionIn) -> Transaction:
 
     # 6. No narration → send WhatsApp, create clarification request
     if not cleaned:
-        tx.status = TransactionStatus.pending
-        db.add(tx)
-        db.commit()
-        db.refresh(tx)
+        try:
+            tx.status = TransactionStatus.pending
+            db.add(tx)
+            db.commit()
+            db.refresh(tx)
+        except Exception as e:
+            db.rollback()
+            print(f"[Processor] ERROR saving transaction: {e}")
+            raise
 
         send_clarification_prompt(user.phone, tx.amount, tx.type.value)
 
-        req = ClarificationRequest(
-            transaction_id=tx.id,
-            user_id=user.id,
-            status=ClarificationStatus.pending,
-            prompt_sent_at=datetime.utcnow(),
-        )
-        db.add(req)
-        db.commit()
+        try:
+            req = ClarificationRequest(
+                transaction_id=tx.id,
+                user_id=user.id,
+                status=ClarificationStatus.pending,
+                prompt_sent_at=datetime.utcnow(),
+            )
+            db.add(req)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"[Processor] ERROR saving clarification request: {e}")
+            raise
         return tx
 
     # 7. Pattern match (free, instant)

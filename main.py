@@ -38,8 +38,12 @@ def health():
 
 @app.post("/webhook/transaction", summary="Receive a transaction directly")
 def receive_transaction(tx: TransactionIn, db: Session = Depends(get_db)):
-    result = process_transaction(db, tx)
-    return {"status": "processed", "transaction_id": result.id, "tx_status": result.status}
+    try:
+        result = process_transaction(db, tx)
+        return {"status": "processed", "transaction_id": result.id, "tx_status": result.status}
+    except Exception as e:
+        print(f"[Webhook] ERROR processing transaction: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Mono webhook ──────────────────────────────────────────────────────────────
