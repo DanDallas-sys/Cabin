@@ -90,8 +90,16 @@ async def mono_webhook(
         print(f"[Mono] No phone in payload, using default test number")
         user_phone = "+2347044016336"  # fallback to your number during testing
 
-    # Mono can send multiple transactions at once
-    raw_transactions = data.get("transactions", [data.get("transaction", {})])
+    # Get account ID to fetch transactions
+    account_id = data.get("account", {}).get("_id")
+    if not account_id:
+        print(f"[Mono] No account ID in payload")
+        return {"status": "error", "detail": "No account ID in payload"}
+
+    # Fetch transactions from Mono API
+    from services.mono import fetch_mono_transactions
+    from services.bank_provider import parse_mono_transaction
+    raw_transactions = fetch_mono_transactions(account_id)
 
     processed = []
     for raw_tx in raw_transactions:
